@@ -1,0 +1,106 @@
+---
+title: 'Homework #4'
+author: "Your Name"
+date: "3/1/2018"
+output: html_document
+---
+---
+title: 'Homework #4'
+author: "Your Name"
+date: "3/1/2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(classdata)
+library(ggplot2)
+library(dplyr)
+```
+
+## Chick weights
+
+
+1. Get a frequency breakdown of the number of chicks, their average weight and the standard deviation of the weights in each of the diets at the start of the study. Store the resulting data frame in a variable named `weight0` and print.<br>
+```{r}
+nrow(ChickWeight)
+diet1 = ChickWeight[ChickWeight$Diet == 1,]
+diet2 = ChickWeight[ChickWeight$Diet == 2,]
+diet3 = ChickWeight[ChickWeight$Diet == 3,]
+diet4 = ChickWeight[ChickWeight$Diet == 4,]
+weight0 = data.frame("Diet" = c("Diet 1", "Diet 2", "Diet 3", "Diet 4"),"Average" = c(mean(diet1$weight), mean(diet2$weight), mean(diet3$weight), mean(diet4$weight)), "StdDev" = c(sd(diet1$weight), sd(diet2$weight), sd(diet3$weight), sd(diet4$weight)))
+weight0
+```
+
+<!-- 5 pts of extra credit: construct a ggplot that shows average weights by diet with an interval (shown as a line) of +- the standard deviation around the averages. -->
+```{r}
+ggplot(weight0, aes(x = Diet, y = Average)) + geom_point() + geom_linerange(aes(ymin = Average - StdDev, ymax = Average + StdDev))
+```
+
+
+2. Each chick should have twelve weight measurements. Use the dplyr package to identify how many measurements are there for each chick. Extract a subset of the data for all chicks with complete information, name the data set `complete`, and print the first 3 rows. (Hint: you might want to use mutate to introduce a helper variable consisting of the number of observations)
+```{r}
+dat = ChickWeight %>%
+  group_by(Chick) %>%
+  mutate(num_measurements = n())
+
+complete = filter(dat, num_measurements == 12)
+head(complete,3)
+```
+
+
+3. In the complete data set introduce a new variable that measures the current weight difference compared to day 0. Name this variable  `weightgain` and print the first 3 rows of the new data frame.
+```{r}
+dat1 = complete %>%
+  group_by(Chick) %>%
+  mutate(noWeight = weight[Time == 0]) %>%
+  mutate( weightgain = weight - noWeight)
+
+head(dat1,3)
+```
+
+
+4. Use `{ggplot2}` to create side-by-side boxplots of `weightgain` by `Diet` for day 21. Describe the relationship in 2-3 sentences. Change the order of the categories in the Diet variable such that the boxplots are ordered by median `weightgain`, and the lower limit of the y axis should be 0.
+```{r}
+day21 = dat1 %>%
+  filter(Time == 21)
+
+dietMedian = factor(day21$Diet, levels = c("1", "2","4","3"))
+
+ggplot(day21, aes(x = dietMedian, y = weightgain, ylim(0, max(day21$weightgain)))) + geom_boxplot()
+```
+Diet one has the smallest median weight gain among chickens. Followed by diet 2, diet 4, and finally diet 3.  Diet 3 has the largest median weight gain of the four diets.  They all have about the same range except for diet 4.  Diet 4 has a smaller range of weight gain.
+
+
+5. Answer the following question using numerical and graphical summary: Which chick gained the most weight and which gained the least weight? What diets were they on?
+```{r}
+dat2 = dat1 %>%
+  filter(weightgain == max(dat1$weightgain) | weightgain == min(dat1$weightgain))
+dat2
+
+ggplot(dat1, aes(x = Chick, y = weightgain, color = Diet)) + geom_point() + coord_flip()
+```
+Chick 3 gained the least weight by losing 4 units of weight.  Chick 35 gained the most weight by gaining 332 units of weight.  The graph has a nice color code by diet and you can clearly see chick 3 and 35 have the minimum and maximum weight gain respectively.  
+
+6. For the chicks with the least and the most weight at time 0, plot their growth trajectories over time. </br>
+5 pts of extra credit: Add to the plot the average growth trajectory for all chicks (calculated as the mean weight for each chick at each time). How do the trajectories compare?
+```{r}
+dat3 = dat1 %>%
+  filter(noWeight == max(dat1$noWeight) | noWeight == min(dat1$noWeight)) %>%
+  group_by(Time) %>%
+  mutate(mean1 = mean(weight))
+dat3
+
+ggplot(dat3, aes(x = Time, y = weight, color = Chick)) + geom_line() + geom_line(aes(x = Time, y = mean1), color = 'red')
+```
+Most of the growth rates seem to follow a similar trend to the red mean line. The chicks with a number less than 27 means their noWeight is the maximum.  The chicks with a number greater than or equal to 27 have the noWeight as the minimum.  Generally the observations with a noWeight of 39 are above the mean line, meaning they have above average weights.
+
+7. What else do you find interesting in the dataset? Show your exploratory analysis.
+```{r}
+dat1$noWeight = factor(dat1$noWeight)
+ggplot(dat1, aes(x = noWeight, y = weightgain)) + geom_boxplot() + facet_grid(~Diet)
+``` 
+This graph shows the distributions for weightgain split into both starting weight and diet.  The highest mean weight gain is when the chick has a `noWeight` value of 40 and is on diet 2.  The mean weight gain is inbetween 100 and 150.  The lowest mean weight gain is when the chick has a `noWeight` value of 42 and is on diet 2.  I think its odd that on the same diet, the highest and lowest mean weight gain values occur.  It looks like the chicks with the `noWeight` value of 42 either has the lowest or is barely not the lowest mean weight gain value among the diet groups.  There is no consistent `noWeight` value that has the highest mean weight gain value among the diet groups.  
